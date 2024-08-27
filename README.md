@@ -1,6 +1,18 @@
-Run using:
+# Container GPU Exporter
 
-```
-go mod tidy
-go run .
-```
+In my search for robust and reliable monitoring tools, preferably developed by the original equipment manufacturers, I encountered a few promising options like NVML and DCGM exporters for NVIDIA GPUs. However, none of these tools offer the specific container-level metrics I was after. This gap in functionality is somewhat understandable, considering that from a GPU’s perspective, it’s engaging with a process, not discerning whether that process is isolated within a container. This realization led me to accept that a tailor-made solution was necessary. Although I won’t delve into why GPUs are pivotal for application containers — a usage that’s become increasingly common — I was nonetheless surprised by the lack of ready-made solutions readily discoverable through a simple Google search.
+
+## Custom Prometheus Exporter
+
+Initially, it was crucial to ascertain the feasibility of monitoring GPU usage on a per-container basis. Technically, the prospect seemed viable as process IDs could be used to identify which processes were utilizing the GPU, and whether these were operating within containers. While a quick and rudimentary solution involved scripting calls to nvidia-smi and the Docker CLI, I aimed for a more refined approach. Thus, I opted to directly engage with SDKs or APIs for a cleaner integration. This task can often prove to be challenging due to the often sparse documentation and the need to navigate through source code to uncover the necessary details.
+
+
+## GPU side of the solution
+After some investigation, I discovered the NVIDIA Management Library (NVML), a well-structured resource that facilitated a comprehensive understanding of its workings. I would speculate NVML serves as the backbone for nvidia-smi, although its code is not open source but still. It offers bindings for Python, Go, and C, but notably, the Go binding stands out as the only one directly maintained by the Nvidia team, making it an obvious choice for this project. The Go binding is accessible here for those interested in exploring further.
+
+
+## Containers side of the solution
+On the containers side the idea was to interact with the Containerd API, since this is what Docker as well as Kubernetes uses as a default high-level runtime — so I would solve two problems at a time. But this turned to not be possible — at least what I was able to find. The issue is that if you spawn a container using Docker, its (not the ID!) is only stored in Docker, but not seen through or which directly interact with containerd. The container name is also not seen through Linux processes under but this are just ideas that I got, in order to make the solution more flexible rather than just Docker or Kubernetes specific. So that was a blocker, but still that doesn’t prevent me to provide some configuration file to the user so one can set in what kind of environment this prometheus exporter will be ran in. But we’ll get to this next time.
+
+
+Initially, I intended to leverage the Containerd API for container-side interaction, as both Docker and Kubernetes rely on it as a default runtime, offering the potential to address multiple challenges simultaneously. However, this approach proved unfeasible based on my findings. The issue stemmed from the fact that when a container is spawned using Docker, its name (not its ID) is solely stored within Docker, making it inaccessible through tools like nerdctl or ctr, which interact directly with Containerd. Moreover, the container name isn’t retrievable through Linux processes under /proc. Despite this setback, I remain committed to enhancing flexibility by offering users a configuration file option, enabling them to specify the environment in which the Prometheus exporter operates. 
